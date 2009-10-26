@@ -1,9 +1,16 @@
 class Omniture
   
   attr_accessor :events, :evars, :props, :is_flushed
+  mattr_reader :omniture_config
   
   def initialize
+    unless @@omniture_config
+      @@omniture_config = YAML.load_file("#{RAILS_ROOT}/config/omniture.yml").symbolize_keys
+    end
     reset
+  rescue
+    to_stderr "Be sure to put omniture.yml into your config directory." 
+    exit
   end
   
   def reset
@@ -17,21 +24,21 @@ class Omniture
     @is_flushed = false
     events.each do |event|
       event = event.to_s
-      @events << ::EVENTS[event] if ::EVENTS.has_key? event
+      @events << config(:events)[event] if config(:events).has_key? event
     end
   end
   
   def add_props(props)
     @is_flushed = false
     props.stringify_keys.each_pair do |key, value|
-      @props[::PROPS[key]] = value if ::PROPS.has_key? key
+      @props[config(:props)[key]] = value if config(:props).has_key? key
     end
   end
   
   def add_event_variables(pairs)
     @is_flushed = false
     pairs.stringify_keys.each_pair do |key, value|
-      @evars[::EVARS[key]] = value if ::EVARS.has_key? key
+      @evars[config(:evars)[key]] = value if config(:evars).has_key? key
     end
   end
   
@@ -73,14 +80,10 @@ class Omniture
       http://www.omniture.com -->
       <script language="JavaScript"><!--
       /* You may give each page an identifying name, server, and channel on the next lines. */
-      
-    OUT
-      
-    out << print_events
-    out << print_evars
-    out << print_props
-    
-    out << <<-OUT
+
+      #{print_events}
+      #{print_evars}
+      #{print_props}
     
       /************* DO NOT ALTER ANYTHING BELOW THIS LINE ! **************/
       var s_code=s.t();if(s_code)document.write(s_code);//--></script>
@@ -89,53 +92,36 @@ class Omniture
     out
   end
   
-  def print_page_js_only_and_flush
-    unless @is_flushed
-      out = <<-OUT
-        /* SiteCatalyst code version: H.15.1
-        Copyright 1997-2008 Omniture, Inc. More info available at
-        http://www.omniture.com */
-        /* You may give each page an identifying name, server, and channel on the next lines. */
-
-      OUT
-
-      out << print_events
-      out << print_evars
-      out << print_props
-
-      out << <<-OUT
-
-        /************* DO NOT ALTER ANYTHING BELOW THIS LINE ! **************/
-        var s_code=s.t();if(s_code)document.write(s_code);
-        /* End SiteCatalyst code version: H.15.1 */
-      OUT
-      self.reset
-      return out
-    end
-  end
-  
   private
   
-  def print_evars
-    out = ''
-    @evars.each_pair do |key,value|
-      out << "#{key}='#{value}';"
+    def print_evars
+      out = ''
+      @evars.each_pair do |key,value|
+        out << "#{key}='#{value}';"
+      end
+      out
     end
-    out
-  end
   
-  def print_props
-    out = ''
-    @props.each_pair do |key,value|
-      out << "#{key}='#{value}';"
+    def print_props
+      out = ''
+      @props.each_pair do |key,value|
+        out << "#{key}='#{value}';"
+      end
+      out
     end
-    out
-  end
   
-  def print_events
-    out = ''
-    out << "s.events='#{@events.join(",")}';" if @events.size > 0
-    out
-  end
+    def print_events
+      out = ''
+      out << "s.events='#{@events.join(",")}';" unless @events.empty?
+      out
+    end
+    
+    def to_stderr(s)
+      STDERR.puts "** [Omniture] " + s
+    end
+    
+    def config(key)
+      @@omniture_config[key]
+    end
   
 end
