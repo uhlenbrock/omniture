@@ -53,8 +53,8 @@ class Omniture
       /* You may give each page an identifying name, server, and channel on the next lines. */
       
       #{print_events}
-      #{print_evars(OMNITURE_EVARS.merge(@evars))}
-      #{print_props(OMNITURE_PROPS.merge(@props))}
+      #{print_evars(@evars)}
+      #{print_props(@props)}
   
       /************* DO NOT ALTER ANYTHING BELOW THIS LINE ! **************/
       var s_code=s.t();if(s_code)document.write(s_code)//--></script>
